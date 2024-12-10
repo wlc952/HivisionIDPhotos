@@ -31,7 +31,8 @@ WEIGHTS = {
         "weights",
         "mnn_hivision_modnet.mnn",
     ),
-    "rmbg-1.4": os.path.join(os.path.dirname(__file__), "weights", "rmbg-1.4.onnx"),
+    # "rmbg-1.4": os.path.join(os.path.dirname(__file__), "weights", "rmbg-1.4.onnx"),
+    "rmbg-1.4": os.path.join(os.path.dirname(__file__), "weights", "rmbg-1.4.bmodel"),
     "birefnet-v1-lite": os.path.join(
         os.path.dirname(__file__), "weights", "birefnet-v1-lite.onnx"
     ),
@@ -261,12 +262,11 @@ def get_modnet_matting_photographic_portrait_matting(
 
     return output_image
 
-
-def get_rmbg_matting(input_image: np.ndarray, checkpoint_path, ref_size=1024):
-    global RMBG_SESS
-
-    if not os.path.exists(checkpoint_path):
-        print(f"Checkpoint file not found: {checkpoint_path}")
+def get_rmbg_matting(input_image: np.ndarray, bmodel_path, ref_size=1024):
+    # bmodel infer
+    from tpu_perf.infer import SGInfer
+    if not os.path.exists(bmodel_path):
+        print(f"Checkpoint file not found: {bmodel_path}")
         return None
 
     def resize_rmbg_image(image):
@@ -275,8 +275,7 @@ def get_rmbg_matting(input_image: np.ndarray, checkpoint_path, ref_size=1024):
         image = image.resize(model_input_size, Image.BILINEAR)
         return image
 
-    if RMBG_SESS is None:
-        RMBG_SESS = load_onnx_model(checkpoint_path, set_cpu=True)
+    RMBG_SESS = SGInfer(bmodel_path , batch=1, devices=[0])
 
     orig_image = Image.fromarray(input_image)
     image = resize_rmbg_image(orig_image)
@@ -287,7 +286,7 @@ def get_rmbg_matting(input_image: np.ndarray, checkpoint_path, ref_size=1024):
     im_np = (im_np - 0.5) / 0.5  # Normalize to [-1, 1]
 
     # Inference
-    result = RMBG_SESS.run(None, {RMBG_SESS.get_inputs()[0].name: im_np})[0]
+    result = RMBG_SESS.infer_one(*im_np)[0]
 
     # Post process
     result = np.squeeze(result)
@@ -307,12 +306,61 @@ def get_rmbg_matting(input_image: np.ndarray, checkpoint_path, ref_size=1024):
     # Paste the mask on the original image
     new_im = Image.new("RGBA", orig_image.size, (0, 0, 0, 0))
     new_im.paste(orig_image, mask=pil_im)
-    
-    # 如果RUN_MODE不是野兽模式，则释放模型
-    if os.getenv("RUN_MODE") != "beast":
-        RMBG_SESS = None
 
     return np.array(new_im)
+
+
+# def get_rmbg_matting(input_image: np.ndarray, checkpoint_path, ref_size=1024):
+#     global RMBG_SESS
+
+#     if not os.path.exists(checkpoint_path):
+#         print(f"Checkpoint file not found: {checkpoint_path}")
+#         return None
+
+#     def resize_rmbg_image(image):
+#         image = image.convert("RGB")
+#         model_input_size = (ref_size, ref_size)
+#         image = image.resize(model_input_size, Image.BILINEAR)
+#         return image
+
+#     if RMBG_SESS is None:
+#         RMBG_SESS = load_onnx_model(checkpoint_path, set_cpu=True)
+
+#     orig_image = Image.fromarray(input_image)
+#     image = resize_rmbg_image(orig_image)
+#     im_np = np.array(image).astype(np.float32)
+#     im_np = im_np.transpose(2, 0, 1)  # Change to CxHxW format
+#     im_np = np.expand_dims(im_np, axis=0)  # Add batch dimension
+#     im_np = im_np / 255.0  # Normalize to [0, 1]
+#     im_np = (im_np - 0.5) / 0.5  # Normalize to [-1, 1]
+
+#     # Inference
+#     result = RMBG_SESS.run(None, {RMBG_SESS.get_inputs()[0].name: im_np})[0]
+
+#     # Post process
+#     result = np.squeeze(result)
+#     ma = np.max(result)
+#     mi = np.min(result)
+#     result = (result - mi) / (ma - mi)  # Normalize to [0, 1]
+
+#     # Convert to PIL image
+#     im_array = (result * 255).astype(np.uint8)
+#     pil_im = Image.fromarray(
+#         im_array, mode="L"
+#     )  # Ensure mask is single channel (L mode)
+
+#     # Resize the mask to match the original image size
+#     pil_im = pil_im.resize(orig_image.size, Image.BILINEAR)
+
+#     # Paste the mask on the original image
+#     new_im = Image.new("RGBA", orig_image.size, (0, 0, 0, 0))
+#     new_im.paste(orig_image, mask=pil_im)
+    
+#     # 如果RUN_MODE不是野兽模式，则释放模型
+#     if os.getenv("RUN_MODE") != "beast":
+#         RMBG_SESS = None
+
+#     return np.array(new_im)
 
 
 def get_mnn_modnet_matting(input_image, checkpoint_path, ref_size=512):

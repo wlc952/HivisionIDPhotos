@@ -16,7 +16,8 @@ except ImportError:
 from .context import Context
 from hivision.error import FaceError, APIError
 from hivision.utils import resize_image_to_kb_base64
-from hivision.creator.retinaface import retinaface_detect_faces
+# from hivision.creator.retinaface import retinaface_detect_faces
+from hivision.creator.retinaface.inference_bmodel import retinaface_detect_faces_bmodel
 import requests
 import cv2
 import os
@@ -162,6 +163,63 @@ def detect_face_face_plusplus(ctx: Context):
         )
 
 
+# def detect_face_retinaface(ctx: Context):
+#     """
+#     基于RetinaFace模型的人脸检测处理器，只进行人脸数量的检测
+#     :param ctx: 上下文，此时已获取到原始图和抠图结果，但是我们只需要原始图
+#     :raise FaceError: 人脸检测错误，多个人脸或者没有人脸
+#     """
+#     from time import time
+
+#     global RETINAFCE_SESS
+
+#     if RETINAFCE_SESS is None:
+#         # 计算用时
+#         tic = time()
+#         faces_dets, sess = retinaface_detect_faces(
+#             ctx.origin_image,
+#             os.path.join(base_dir, "retinaface/weights/retinaface-resnet50.onnx"),
+#             sess=None,
+#         )
+#         RETINAFCE_SESS = sess
+#     else:
+#         tic = time()
+#         faces_dets, _ = retinaface_detect_faces(
+#             ctx.origin_image,
+#             os.path.join(base_dir, "retinaface/weights/retinaface-resnet50.onnx"),
+#             sess=RETINAFCE_SESS,
+#         )
+
+#     faces_num = len(faces_dets)
+#     faces_landmarks = []
+#     for face_det in faces_dets:
+#         faces_landmarks.append(face_det[5:])
+
+#     if faces_num != 1:
+#         raise FaceError("Expected 1 face, but got {}".format(faces_num), faces_num)
+#     face_det = faces_dets[0]
+#     ctx.face["rectangle"] = (
+#         face_det[0],
+#         face_det[1],
+#         face_det[2] - face_det[0] + 1,
+#         face_det[3] - face_det[1] + 1,
+#     )
+
+#     # 计算roll_angle
+#     face_landmarks = faces_landmarks[0]
+#     # print("face_landmarks", face_landmarks)
+#     left_eye = np.array([face_landmarks[0], face_landmarks[1]])
+#     right_eye = np.array([face_landmarks[2], face_landmarks[3]])
+#     dy = right_eye[1] - left_eye[1]
+#     dx = right_eye[0] - left_eye[0]
+#     roll_angle = np.degrees(np.arctan2(dy, dx))
+#     ctx.face["roll_angle"] = roll_angle
+
+#     # 如果RUN_MODE不是野兽模式，则释放模型
+#     if os.getenv("RUN_MODE") == "beast":
+#         RETINAFCE_SESS = None
+
+
 def detect_face_retinaface(ctx: Context):
     """
     基于RetinaFace模型的人脸检测处理器，只进行人脸数量的检测
@@ -169,25 +227,11 @@ def detect_face_retinaface(ctx: Context):
     :raise FaceError: 人脸检测错误，多个人脸或者没有人脸
     """
     from time import time
-
-    global RETINAFCE_SESS
-
-    if RETINAFCE_SESS is None:
-        # 计算用时
-        tic = time()
-        faces_dets, sess = retinaface_detect_faces(
-            ctx.origin_image,
-            os.path.join(base_dir, "retinaface/weights/retinaface-resnet50.onnx"),
-            sess=None,
-        )
-        RETINAFCE_SESS = sess
-    else:
-        tic = time()
-        faces_dets, _ = retinaface_detect_faces(
-            ctx.origin_image,
-            os.path.join(base_dir, "retinaface/weights/retinaface-resnet50.onnx"),
-            sess=RETINAFCE_SESS,
-        )
+    tic = time()
+    faces_dets = retinaface_detect_faces_bmodel(
+        ctx.origin_image,
+        os.path.join(base_dir, "retinaface/weights/retinaface-resnet50.bmodel"),
+    )
 
     faces_num = len(faces_dets)
     faces_landmarks = []
@@ -213,7 +257,3 @@ def detect_face_retinaface(ctx: Context):
     dx = right_eye[0] - left_eye[0]
     roll_angle = np.degrees(np.arctan2(dy, dx))
     ctx.face["roll_angle"] = roll_angle
-
-    # 如果RUN_MODE不是野兽模式，则释放模型
-    if os.getenv("RUN_MODE") == "beast":
-        RETINAFCE_SESS = None

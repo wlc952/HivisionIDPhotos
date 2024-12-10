@@ -11,8 +11,8 @@ import numpy as np
 from typing import Tuple
 import hivision.creator.utils as U
 from .context import Context, ContextHandler, Params, Result
-from .human_matting import extract_human
-from .face_detector import detect_face_mtcnn
+from .human_matting import extract_human_rmbg as extract_human
+from .face_detector import detect_face_retinaface as detect_face
 from hivision.plugin.beauty.handler import beauty_face
 from .photo_adjuster import adjust_photo
 import cv2
@@ -44,7 +44,7 @@ class IDCreator:
         """
         # 处理者
         self.matting_handler: ContextHandler = extract_human
-        self.detection_handler: ContextHandler = detect_face_mtcnn
+        self.detection_handler: ContextHandler = detect_face
         self.beauty_handler: ContextHandler = beauty_face
         # 上下文
         self.ctx = None

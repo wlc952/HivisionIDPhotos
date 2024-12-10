@@ -12,7 +12,7 @@ root_dir = os.path.dirname(os.path.abspath(__file__))
 HUMAN_MATTING_MODELS_EXIST = [
     os.path.splitext(file)[0]
     for file in os.listdir(os.path.join(root_dir, "hivision/creator/weights"))
-    if file.endswith(".onnx") or file.endswith(".mnn")
+    if file.endswith(".onnx") or file.endswith(".mnn") or file.endswith(".bmodel")
 ]
 # 在HUMAN_MATTING_MODELS中的模型才会被加载到Gradio中显示
 HUMAN_MATTING_MODELS_CHOICE = [
@@ -32,6 +32,10 @@ FACE_DETECT_MODELS_EXPAND = (
     if os.path.exists(
         os.path.join(
             root_dir, "hivision/creator/retinaface/weights/retinaface-resnet50.onnx"
+        ) or os.path.exists(
+            os.path.join(
+                root_dir, "hivision/creator/retinaface/weights/retinaface-resnet50.bmodel"
+            )
         )
     )
     else []

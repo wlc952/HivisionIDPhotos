@@ -41,8 +41,8 @@ async def idphoto_inference(
     input_image_base64: str = Form(None),
     height: int = Form(413),
     width: int = Form(295),
-    human_matting_model: str = Form("modnet_photographic_portrait_matting"),
-    face_detect_model: str = Form("mtcnn"),
+    human_matting_model: str = Form("rmbg-1.4"),
+    face_detect_model: str = Form("retinaface-resnet50"),
     hd: bool = Form(True),
     dpi: int = Form(300),
     face_align: bool = Form(False),
@@ -106,7 +106,7 @@ async def idphoto_inference(
 async def human_matting_inference(
     input_image: UploadFile = File(None),
     input_image_base64: str = Form(None),
-    human_matting_model: str = Form("hivision_modnet"),
+    human_matting_model: str = Form("rmbg-1.4"),
     dpi: int = Form(300),
 ):
     if input_image_base64:
@@ -308,7 +308,7 @@ async def idphoto_crop_inference(
     input_image_base64: str = Form(None),
     height: int = Form(413),
     width: int = Form(295),
-    face_detect_model: str = Form("mtcnn"),
+    face_detect_model: str = Form("retinaface-resnet50"),
     hd: bool = Form(True),
     dpi: int = Form(300),
     head_measure_ratio: float = Form(0.2),
@@ -360,4 +360,4 @@ if __name__ == "__main__":
     import uvicorn
 
     # 在8080端口运行推理服务
-    uvicorn.run(app, host="0.0.0.0", port=8080)
+    uvicorn.run(app, host="0.0.0.0", port=8000)
